@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Actividades y Participantes</title>
+    <!-- jsPDF and jsPDF-AutoTable Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- SheetJS para exportación a Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <!-- Ubicaciones -->
+    <script src="js/ubicaciones.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            padding-bottom: 50px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            font-size: 1.8em;
+        }
+        h2 {
+            margin-top: 25px;
+            color: #555;
+            border-bottom: 1px solid #007bff;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #444;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95em;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="email"]:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        button, .button-like {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+        button:hover, .button-like:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #lista-actividades { /* Se mantiene el estilo actual para la lista de actividades */
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .list-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .list-item:last-child {
+            border-bottom: none;
+        }
+        .list-item strong {
+            color: #333;
+        }
+        .eliminar-btn {
+            background-color: #dc3545;
+        }
+        .eliminar-btn:hover {
+            background-color: #c82333;
+        }
+        .export-pdf-btn {
+            background-color: #17a2b8;
+        }
+        .export-pdf-btn:hover {
+            background-color: #138496;
+        }
+        .empty-list-message {
+            color: #777;
+            font-style: italic;
+            padding: 10px 0;
+        }
+        .list-item::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        select:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+        .total-participantes {
+            text-align: right;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .total-participantes label {
+            font-weight: bold;
+            color: #007bff;
+            margin-right: 10px;
+            font-size: 1.1em;
+        }
+        .total-participantes span {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .banner {
+            background: linear-gradient(90deg, #007bff 0%, #17a2b8 100%);
+            padding: 15px;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 18px rgba(0, 123, 255, 0.10);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            max-width: 1000px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .banner-img {
+            max-width: 100%;
+            max-height: 180px;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+            position: relative;
+            z-index: 1;
+        }
+        .marquesina-cientificos {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.08);
+            z-index: 5;
+            background: linear-gradient(90deg, #0056b3 0%, #17a2b8 100%);
+            padding: 8px 0;
+        }
+        .marquesina-contenido {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 100%;
+            animation: marquesina 55s linear infinite;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #fff;
+            font-size: 0.9em;
+            text-shadow: 1px 1px 4px #003366, 0 0 2px #17a2b8;
+        }
+        @keyframes marquesina {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .export-controls {
+            margin-bottom: 20px;
+        }
+        .export-buttons {
+            margin-top: 10px;
+        }
+
+        /* --- NUEVO ESTILO PARA LA LISTA GENERAL DE PARTICIPANTES --- */
+        #lista-participantes-general-container {
+            margin-top: 30px; /* Más espacio arriba */
+            padding: 25px;
+            background-color: #e9ecef; /* Un fondo ligeramente diferente */
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        #lista-participantes-general-container h2 {
+            color: #0056b3; /* Color de título distintivo */
+            border-bottom: 2px solid #0056b3;
+            margin-top: 0; /* Quitar margen superior si es el primer elemento */
+        }
+        #participantes-ul { /* Estilos específicos para la lista ul dentro del nuevo contenedor */
+            list-style-type: none; /* Quitar viñetas por defecto si no se desean */
+            padding-left: 0; /* Quitar padding por defecto del ul */
+        }
+         /* Mantener estilos para los items individuales de la lista */
+        #participantes-ul .list-item {
+            background-color: #fff; /* Fondo blanco para cada item */
+            border: 1px solid #dee2e6; /* Borde más sutil */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <img src="img/bane.png" alt="Banner institucional" class="banner-img">
+        <div class="marquesina-cientificos">
+            <div class="marquesina-contenido" id="marquesina-contenido">
+                "La tecnología es solo una herramienta..." <!-- Contenido abreviado por brevedad -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Registro de Actividades y Participantes</h1>
+
+        <div class="total-participantes">
+            <label>Total General de Participantes Registrados:</label>
+            <span id="total-participantes-general">0</span>
+        </div>
+
+        <h2>Registrar Nueva Actividad</h2>
+        <form id="formulario-actividad">
+            <label for="nombre-actividad">Nombre de la Actividad:</label>
+            <input type="text" id="nombre-actividad" required>
+            <label for="descripcion-actividad">Características de la Actividad:</label>
+            <textarea id="descripcion-actividad"></textarea>
+            <button type="submit">Guardar Actividad</button>
+        </form>
+
+        <div id="lista-actividades">
+            <h2>Actividades Registradas</h2>
+            <ul id="actividades-ul"></ul>
+        </div>
+
+        <h2>Registrar Participante</h2>
+        <form id="formulario-participante">
+            <label for="actividad-asignada-participante">Asignar a Actividad:</label>
+            <select id="actividad-asignada-participante" required>
+                <option value="">-- Seleccione una Actividad --</option>
+            </select>
+            <label for="nombre-participante">Nombre:</label>
+            <input type="text" id="nombre-participante" required>
+            <label for="apellido-participante">Apellido:</label>
+            <input type="text" id="apellido-participante" required>
+            <label for="cedula-participante">Cédula:</label>
+            <input type="text" id="cedula-participante">
+            <label for="telefono-participante">Teléfono:</label>
+            <input type="text" id="telefono-participante">
+            <label for="email-participante">Correo Electrónico:</label>
+            <input type="email" id="email-participante">
+            <label for="sexo-participante">Sexo:</label>
+            <select id="sexo-participante" required>
+                <option value="">Seleccione el sexo</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+            </select>
+            <label for="edad-participante">Edad:</label>
+            <input type="number" id="edad-participante" min="1" max="120" required>
+            <label for="institucion-participante">Institución:</label>
+            <input type="text" id="institucion-participante">
+            <label for="cargo-participante">Cargo y/o Información Adicional:</label>
+            <textarea id="cargo-participante" rows="3" placeholder="Ingrese el cargo y cualquier información adicional relevante"></textarea>
+            <div class="form-group">
+                <label for="estado-participante">Estado:</label>
+                <select class="form-control" id="estado-participante" onchange="actualizarMunicipios()" required>
+                    <option value="">Seleccione un estado</option>
+                    <!-- Opciones de estado -->
+                     <option value="Amazonas">Amazonas</option>
+                    <option value="Anzoátegui">Anzoátegui</option>
+                    <option value="Apure">Apure</option>
+                    <option value="Aragua">Aragua</option>
+                    <option value="Barinas">Barinas</option>
+                    <option value="Bolívar">Bolívar</option>
+                    <option value="Carabobo">Carabobo</option>
+                    <option value="Cojedes">Cojedes</option>
+                    <option value="Delta Amacuro">Delta Amacuro</option>
+                    <option value="Distrito Capital">Distrito Capital</option>
+                    <option value="Falcón">Falcón</option>
+                    <option value="Guárico">Guárico</option>
+                    <option value="Lara">Lara</option>
+                    <option value="Mérida">Mérida</option>
+                    <option value="Miranda">Miranda</option>
+                    <option value="Monagas">Monagas</option>
+                    <option value="Nueva Esparta">Nueva Esparta</option>
+                    <option value="Portuguesa">Portuguesa</option>
+                    <option value="Sucre">Sucre</option>
+                    <option value="Táchira">Táchira</option>
+                    <option value="Trujillo">Trujillo</option>
+                    <option value="Vargas">Vargas</option>
+                    <option value="Yaracuy">Yaracuy</option>
+                    <option value="Zulia">Zulia</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="municipio-participante">Municipio:</label>
+                <select class="form-control" id="municipio-participante" onchange="actualizarParroquias()" required disabled>
+                    <option value="">Seleccione un municipio</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="parroquia-participante">Parroquia:</label>
+                <select class="form-control" id="parroquia-participante" required disabled>
+                    <option value="">Seleccione una parroquia</option>
+                </select>
+            </div>
+            <button type="submit">Registrar Participante</button>
+        </form>
+
+        <!-- SECCIÓN DE EXPORTACIÓN VA AQUÍ, ANTES DE LA LISTA GENERAL DE PARTICIPANTES -->
+        <section id="exportacion-general">
+            <h2>Exportar Datos</h2>
+            <div class="export-controls">
+                <label for="actividad-exportar">Seleccione la Actividad para exportar sus participantes:</label>
+                <select id="actividad-exportar" required>
+                    <option value="">-- Seleccione una Actividad --</option>
+                </select>
+                <div class="export-buttons">
+                    <button id="exportar-pdf" class="button-like export-pdf-btn">Exportar PDF (Actividad Seleccionada)</button>
+                    <button id="exportar-excel" class="button-like">Exportar Excel (Actividad Seleccionada)</button>
+                    <button id="exportar-txt" class="button-like">Exportar TXT (Actividad Seleccionada)</button>
+                </div>
+            </div>
+            <div class="export-controls" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                <label>Exportar todos los participantes registrados:</label>
+                <div class="export-buttons">
+                     <button id="exportar-todos-excel" class="button-like" style="background-color: #28a745;">Exportar TODOS los Participantes a Excel</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- NUEVO CONTENEDOR PARA LA LISTA GENERAL DE PARTICIPANTES AL FONDO -->
+        <div id="lista-participantes-general-container">
+            <h2>Participantes Registrados (General)</h2>
+            <ul id="participantes-ul">
+                <!-- Los participantes se cargarán aquí por JavaScript -->
+            </ul>
+        </div>
+
+    </div> <!-- Fin de .container -->
+
+    <script>
+        // Ensure jsPDF is available globally for jsPDF-AutoTable
+        if (window.jspdf && window.jspdf.jsPDF) {
+            window.jsPDF = window.jspdf.jsPDF;
+        }
+
+        let actividadesRegistradas = JSON.parse(localStorage.getItem('actividades')) || [];
+        let participantesRegistrados = JSON.parse(localStorage.getItem('participantes')) || [];
+
+        // DOM Elements
+        const formActividad = document.getElementById('formulario-actividad');
+        const nombreActividadEl = document.getElementById('nombre-actividad');
+        const descripcionActividadEl = document.getElementById('descripcion-actividad');
+        const totalParticipantesGeneralEl = document.getElementById('total-participantes-general');
+        const listaActividadesUl = document.getElementById('actividades-ul');
+        const formParticipante = document.getElementById('formulario-participante');
+        const actividadAsignadaSelect = document.getElementById('actividad-asignada-participante');
+        const nombreParticipanteEl = document.getElementById('nombre-participante');
+        const apellidoParticipanteEl = document.getElementById('apellido-participante');
+        const cedulaParticipanteEl = document.getElementById('cedula-participante');
+        const telefonoParticipanteEl = document.getElementById('telefono-participante');
+        const emailParticipanteEl = document.getElementById('email-participante');
+        const sexoParticipanteEl = document.getElementById('sexo-participante');
+        const edadParticipanteEl = document.getElementById('edad-participante');
+        const institucionParticipanteEl = document.getElementById('institucion-participante');
+        const cargoParticipanteEl = document.getElementById('cargo-participante');
+        const estadoParticipanteEl = document.getElementById('estado-participante');
+        const municipioParticipanteEl = document.getElementById('municipio-participante');
+        const parroquiaParticipanteEl = document.getElementById('parroquia-participante');
+        
+        // EL ELEMENTO <ul id="participantes-ul"> YA ESTÁ DEFINIDO EN EL HTML.
+        // SOLO NECESITAMOS REFERENCIARLO CORRECTAMENTE.
+        const listaParticipantesGeneralUl = document.getElementById('participantes-ul');
+
+
+        // Asegurarnos de que los datos de ubicación estén disponibles
+        if (typeof datosUbicacion === 'undefined') {
+            console.error('El archivo ubicaciones.js no se ha cargado correctamente o la variable datosUbicacion no está definida.');
+        }
+
+        function actualizarMunicipios() {
+            const municipioSelect = document.getElementById('municipio-participante');
+            const parroquiaSelect = document.getElementById('parroquia-participante');
+            
+            municipioSelect.innerHTML = '<option value="">Seleccione un municipio</option>';
+            parroquiaSelect.innerHTML = '<option value="">Seleccione una parroquia</option>';
+            municipioSelect.disabled = true;
+            parroquiaSelect.disabled = true;
+            
+            const estadoSeleccionado = estadoParticipanteEl.value;
+            
+            if (estadoSeleccionado && typeof datosUbicacion !== 'undefined' && datosUbicacion[estadoSeleccionado]) {
+                const municipios = datosUbicacion[estadoSeleccionado].municipios;
+                const municipiosOrdenados = Object.keys(municipios).sort();
+                
+                municipiosOrdenados.forEach(municipio => {
+                    const option = document.createElement('option');
+                    option.value = municipio;
+                    option.textContent = municipio;
+                    municipioSelect.appendChild(option);
+                });
+                municipioSelect.disabled = false;
+            }
+        }
+
+        function actualizarParroquias() {
+            const parroquiaSelect = document.getElementById('parroquia-participante');
+            parroquiaSelect.innerHTML = '<option value="">Seleccione una parroquia</option>';
+            parroquiaSelect.disabled = true;
+            
+            const estadoSeleccionado = estadoParticipanteEl.value;
+            const municipioSeleccionado = municipioParticipanteEl.value;
+            
+            if (estadoSeleccionado && municipioSeleccionado && 
+                typeof datosUbicacion !== 'undefined' &&
+                datosUbicacion[estadoSeleccionado] && 
+                datosUbicacion[estadoSeleccionado].municipios[municipioSeleccionado]) {
+                
+                const parroquias = datosUbicacion[estadoSeleccionado].municipios[municipioSeleccionado];
+                const parroquiasOrdenadas = [...parroquias].sort();
+                
+                parroquiasOrdenadas.forEach(parroquia => {
+                    const option = document.createElement('option');
+                    option.value = parroquia;
+                    option.textContent = parroquia;
+                    parroquiaSelect.appendChild(option);
+                });
+                parroquiaSelect.disabled = false;
+            }
+        }
+
+        function popularActividadesDropdown() {
+            actividadAsignadaSelect.innerHTML = '<option value="">-- Seleccione una Actividad --</option>';
+            if (actividadesRegistradas.length === 0) {
+                actividadAsignadaSelect.disabled = true;
+                const option = document.createElement('option');
+                option.textContent = "No hay actividades registradas";
+                option.disabled = true;
+                actividadAsignadaSelect.appendChild(option);
+            } else {
+                actividadAsignadaSelect.disabled = false;
+                actividadesRegistradas.forEach(actividad => {
+                    const option = document.createElement('option');
+                    option.value = actividad.id;
+                    option.textContent = actividad.nombre;
+                    actividadAsignadaSelect.appendChild(option);
+                });
+            }
+        }
+
+        function agregarActividad(event) {
+            event.preventDefault();
+            const nombre = nombreActividadEl.value.trim();
+            const descripcion = descripcionActividadEl.value.trim();
+
+            if (nombre) {
+                const actividad = { 
+                    id: Date.now(), 
+                    nombre, 
+                    descripcion
+                };
+                actividadesRegistradas.push(actividad);
+                localStorage.setItem('actividades', JSON.stringify(actividadesRegistradas));
+                mostrarActividades();
+                formActividad.reset();
+            } else {
+                alert('Por favor, ingrese un nombre de actividad válido.');
+            }
+        }
+        
+        function actualizarTotalParticipantesGeneral() {
+            totalParticipantesGeneralEl.textContent = participantesRegistrados.length;
+        }
+
+        function mostrarActividades() {
+            listaActividadesUl.innerHTML = '';
+            const actividadExportarSelect = document.getElementById('actividad-exportar');
+            actividadExportarSelect.innerHTML = '<option value="">-- Seleccione una Actividad --</option>';
+            
+            if (actividadesRegistradas.length === 0) {
+                listaActividadesUl.innerHTML = '<li class="empty-list-message">No hay actividades registradas.</li>';
+            } else {
+                actividadesRegistradas.forEach((actividad, index) => {
+                    const participantesActuales = participantesRegistrados.filter(p => p.actividadId === actividad.id).length;
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-item';
+                    listItem.innerHTML = `
+                        <div>
+                            <strong>Nombre:</strong> ${actividad.nombre}<br>
+                            <strong>Características:</strong> ${actividad.descripcion || 'N/A'}<br>
+                            <strong>Total de Participantes en esta Actividad:</strong> <span id="total-participantes-actividad-${actividad.id}">${participantesActuales}</span>
+                        </div>
+                        <div class="list-item-buttons" style="text-align: right; margin-top: 5px;">
+                            <button class="eliminar-btn" onclick="eliminarActividad(${actividad.id}, ${index})">Eliminar</button>
+                        </div>
+                    `;
+                    listaActividadesUl.appendChild(listItem);
+
+                    const option = document.createElement('option');
+                    option.value = actividad.id;
+                    option.textContent = actividad.nombre;
+                    actividadExportarSelect.appendChild(option);
+                });
+            }
+            popularActividadesDropdown();
+            actualizarTotalParticipantesGeneral();
+        }
+
+        function eliminarActividad(idActividad, index) {
+            const actividadAEliminar = actividadesRegistradas[index];
+            if (!actividadAEliminar || actividadAEliminar.id !== idActividad) {
+                console.error("Error al encontrar la actividad para eliminar.");
+                return;
+            }
+            const participantesAsociados = participantesRegistrados.filter(p => p.actividadId === idActividad).length;
+            let mensajeConfirmacion = `¿Está seguro de que desea eliminar la actividad "${actividadAEliminar.nombre}"?`;
+            if (participantesAsociados > 0) {
+                mensajeConfirmacion += `\n\n¡ADVERTENCIA! Hay ${participantesAsociados} participante(s) asignado(s) a esta actividad. Si elimina la actividad, estos participantes quedarán sin actividad asignada visible. ¿Desea continuar?`;
+            }
+            if (confirm(mensajeConfirmacion)) {
+                actividadesRegistradas.splice(index, 1);
+                localStorage.setItem('actividades', JSON.stringify(actividadesRegistradas));
+                mostrarActividades();
+                mostrarParticipantesGeneral(); // Actualizar la lista general
+            }
+        }
+
+        function exportarDatosExcel() {
+            const actividadId = document.getElementById('actividad-exportar').value;
+            if (!actividadId) {
+                alert('Por favor, seleccione una actividad para exportar.');
+                return;
+            }
+            const actividad = actividadesRegistradas.find(a => a.id === parseInt(actividadId));
+            if (!actividad) {
+                alert('Error: No se encontró la actividad seleccionada.');
+                return;
+            }
+            const wb = XLSX.utils.book_new();
+            const actividadData = [{'ID': actividad.id, 'Nombre': actividad.nombre, 'Características': actividad.descripcion || 'N/A', 'Total Participantes': participantesRegistrados.filter(p => p.actividadId === actividad.id).length}];
+            const wsActividad = XLSX.utils.json_to_sheet(actividadData);
+            XLSX.utils.book_append_sheet(wb, wsActividad, "Información Actividad");
+            const participantesDeActividad = participantesRegistrados.filter(p => p.actividadId === parseInt(actividadId));
+            if (participantesDeActividad.length === 0) {
+                const wsParticipantesVacios = XLSX.utils.json_to_sheet([{"Mensaje": `No hay participantes registrados para la actividad: ${actividad.nombre}`}]);
+                XLSX.utils.book_append_sheet(wb, wsParticipantesVacios, "Participantes");
+            } else {
+                const participantesData = participantesDeActividad.map(p => ({'ID': p.id, 'Nombre': p.nombre, 'Apellido': p.apellido, 'Cédula': p.cedula || 'N/A', 'Teléfono': p.telefono || 'N/A', 'Correo': p.email || 'N/A', 'Sexo': p.sexo || 'N/A', 'Edad': p.edad || 'N/A', 'Institución': p.institucion || 'N/A', 'Cargo y/o Info Adicional': p.cargo || 'N/A', 'Estado': p.estado || 'N/A', 'Municipio': p.municipio || 'N/A', 'Parroquia': p.parroquia || 'N/A'}));
+                const wsParticipantes = XLSX.utils.json_to_sheet(participantesData);
+                XLSX.utils.book_append_sheet(wb, wsParticipantes, "Participantes");
+            }
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-").replace("T", "_");
+            XLSX.writeFile(wb, `Informe_Actividad_${actividad.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.xlsx`);
+        }
+
+        function exportarTodosLosParticipantesExcel() {
+            if (participantesRegistrados.length === 0) {
+                alert('No hay participantes registrados para exportar.');
+                return;
+            }
+            const wb = XLSX.utils.book_new();
+            const todosLosParticipantesData = participantesRegistrados.map(p => {
+                const actividadAsociada = actividadesRegistradas.find(act => act.id === p.actividadId);
+                const nombreActividad = actividadAsociada ? actividadAsociada.nombre : `ID Actividad: ${p.actividadId}`;
+                return {'ID Participante': p.id.toString().substring(0,10), 'Nombre': p.nombre, 'Apellido': p.apellido, 'Cédula': p.cedula || 'N/A', 'Teléfono': p.telefono || 'N/A', 'Correo': p.email || 'N/A', 'Sexo': p.sexo || 'N/A', 'Edad': p.edad || 'N/A', 'Institución': p.institucion || 'N/A', 'Cargo y/o Info Adicional': p.cargo || 'N/A', 'Estado': p.estado || 'N/A', 'Municipio': p.municipio || 'N/A', 'Parroquia': p.parroquia || 'N/A', 'Actividad Asignada': nombreActividad};
+            });
+            const wsTodosParticipantes = XLSX.utils.json_to_sheet(todosLosParticipantesData);
+            XLSX.utils.book_append_sheet(wb, wsTodosParticipantes, "Todos los Participantes");
+            if (actividadesRegistradas.length > 0) {
+                const resumenActividadesData = actividadesRegistradas.map(act => ({'ID Actividad': act.id, 'Nombre Actividad': act.nombre, 'Descripción': act.descripcion || 'N/A', 'Nº Participantes': participantesRegistrados.filter(p => p.actividadId === act.id).length}));
+                const wsResumenActividades = XLSX.utils.json_to_sheet(resumenActividadesData);
+                XLSX.utils.book_append_sheet(wb, wsResumenActividades, "Resumen Actividades");
+            }
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-").replace("T", "_");
+            XLSX.writeFile(wb, `Informe_General_Todos_Participantes_${timestamp}.xlsx`);
+        }
+
+        function exportarDatosTXT() {
+            const actividadId = document.getElementById('actividad-exportar').value;
+            if (!actividadId) { alert('Por favor, seleccione una actividad para exportar.'); return; }
+            const actividad = actividadesRegistradas.find(a => a.id === parseInt(actividadId));
+            if (!actividad) { alert('Error: No se encontró la actividad seleccionada.'); return; }
+            let texto = `Informe de Actividad: ${actividad.nombre}\nFecha de Exportación: ${new Date().toLocaleString('es-VE', { dateStyle: 'full', timeStyle: 'medium' })}\n==================================================\n\nINFORMACIÓN DE LA ACTIVIDAD:\n-------------------------\nID: ${actividad.id}\nNombre: ${actividad.nombre}\nCaracterísticas: ${actividad.descripcion || 'N/A'}\nTotal de Participantes: ${participantesRegistrados.filter(p => p.actividadId === actividad.id).length}\n----------------------------------------\n\nPARTICIPANTES REGISTRADOS EN ESTA ACTIVIDAD:\n-------------------------------------------\n`;
+            const participantesDeActividad = participantesRegistrados.filter(p => p.actividadId === parseInt(actividadId));
+            if (participantesDeActividad.length === 0) { texto += "No hay participantes registrados para esta actividad.\n"; }
+            else { participantesDeActividad.forEach((p, index) => { texto += `Participante ${index + 1}:\n  ID: ${p.id.toString().substring(0,10)}\n  Nombre: ${p.nombre} ${p.apellido}\n  Cédula: ${p.cedula || 'N/A'}\n  Teléfono: ${p.telefono || 'N/A'}\n  Correo: ${p.email || 'N/A'}\n  Sexo: ${p.sexo || 'N/A'}\n  Edad: ${p.edad || 'N/A'}\n  Institución: ${p.institucion || 'N/A'}\n  Cargo y/o Info Adicional: ${p.cargo || 'N/A'}\n  Ubicación: ${[p.estado, p.municipio, p.parroquia].filter(Boolean).join(', ') || 'N/A'}\n----------------------------------------\n`; });}
+            texto += "==================================================\nFin del Informe.\n";
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-").replace("T", "_");
+            descargarArchivo(texto, `Informe_Actividad_${actividad.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.txt`);
+        }
+
+        function exportarActividadPDF(actividadId) {
+            const actividad = actividadesRegistradas.find(a => a.id === actividadId);
+            if (!actividad) { alert("Error: No se encontró la actividad para generar el PDF."); return; }
+            const participantesDeActividad = participantesRegistrados.filter(p => p.actividadId === actividadId);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+            doc.setFillColor(23, 162, 184); doc.rect(10, 10, doc.internal.pageSize.getWidth() - 20, 25, 'F');
+            doc.setFontSize(20); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.text(`Informe de Actividad`, 15, 25);
+            doc.setFontSize(14); doc.setTextColor(0, 123, 255); doc.setFont('helvetica', 'bold'); doc.text(`Actividad: ${actividad.nombre}`, 15, 45);
+            doc.setFontSize(10); doc.setTextColor(100); doc.setFont('helvetica', 'normal');
+            doc.text(`Características: ${actividad.descripcion || 'N/A'}`, 15, 55);
+            doc.text(`Total de Participantes: ${participantesDeActividad.length}`, 15, 62);
+            doc.text(`Fecha de Exportación: ${new Date().toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 15, 69);
+            doc.setDrawColor(23, 162, 184); doc.setLineWidth(0.5); doc.line(15, 72, doc.internal.pageSize.getWidth() - 15, 72);
+            if (participantesDeActividad.length === 0) { doc.setFontSize(12); doc.setTextColor(150, 0, 0); doc.text(`No hay participantes registrados para la actividad "${actividad.nombre}".`, 15, 82); }
+            else {
+                const tableColumn = ["#", "Nombre Completo", "Cédula", "Teléfono", "Correo", "Sexo", "Edad", "Institución", "Cargo", "Ubicación"];
+                const tableRows = participantesDeActividad.map((p, index) => [index + 1, `${p.nombre} ${p.apellido}`, p.cedula || 'N/A', p.telefono || 'N/A', p.email || 'N/A', p.sexo || 'N/A', p.edad || 'N/A', p.institucion || 'N/A', p.cargo || 'N/A', `${[p.estado, p.municipio, p.parroquia].filter(Boolean).join(', ') || 'N/A'}`]);
+                doc.autoTable({ head: [tableColumn], body: tableRows, startY: 77, theme: 'grid', headStyles: { fillColor: [23, 162, 184], textColor: 255, fontStyle: 'bold', fontSize: 8, halign: 'center' }, bodyStyles: { fontSize: 7, cellPadding: 1.5 }, alternateRowStyles: { fillColor: [245, 245, 245] }, margin: { top: 10, left: 15, right: 15 }, styles: { overflow: 'linebreak', cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: 35 }, 2: { cellWidth: 20 }, 3: { cellWidth: 22 }, 4: { cellWidth: 35 }, 5: { cellWidth: 15 }, 6: { cellWidth: 10, halign: 'center' }, 7: { cellWidth: 30 }, 8: { cellWidth: 25 }, 9: { cellWidth: 'auto' } },
+                    didDrawPage: function(data) {
+                        doc.setFontSize(8); doc.setTextColor(100);
+                        doc.text(`Página ${doc.internal.getNumberOfPages()}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                        doc.text(`Informe Actividad: ${actividad.nombre}`, doc.internal.pageSize.getWidth() - data.settings.margin.right, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+                    }
+                });
+            }
+            doc.save(`Informe_Actividad_${actividad.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+
+        function descargarArchivo(texto, nombreArchivo) {
+            const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = nombreArchivo; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function agregarParticipante(event) {
+            event.preventDefault();
+            const nombre = nombreParticipanteEl.value.trim();
+            const apellido = apellidoParticipanteEl.value.trim();
+            const cedula = cedulaParticipanteEl.value.trim();
+            const telefono = telefonoParticipanteEl.value.trim();
+            const email = emailParticipanteEl.value.trim();
+            const sexo = sexoParticipanteEl.value;
+            const edad = edadParticipanteEl.value;
+            const institucion = institucionParticipanteEl.value.trim();
+            const cargo = cargoParticipanteEl.value.trim();
+            const estado = estadoParticipanteEl.value;
+            const municipio = municipioParticipanteEl.value;
+            const parroquia = parroquiaParticipanteEl.value;
+            const actividadId = actividadAsignadaSelect.value;
+
+            if (!actividadId) { alert('Por favor, seleccione una actividad.'); return; }
+            if (!nombre) { alert('El nombre es obligatorio.'); nombreParticipanteEl.focus(); return; }
+            if (!apellido) { alert('El apellido es obligatorio.'); apellidoParticipanteEl.focus(); return; }
+            if (!sexo) { alert('Por favor, seleccione el sexo.'); sexoParticipanteEl.focus(); return; }
+            if (!edad || parseInt(edad) < 1 || parseInt(edad) > 120) { alert('Edad inválida.'); edadParticipanteEl.focus(); return; }
+            if (!estado) { alert('Seleccione el estado.'); estadoParticipanteEl.focus(); return; }
+            if (!municipio) { alert('Seleccione el municipio.'); municipioParticipanteEl.focus(); return; }
+            if (!parroquia) { alert('Seleccione la parroquia.'); parroquiaParticipanteEl.focus(); return; }
+
+            const participante = {id: Date.now() + Math.random(), nombre, apellido, cedula, telefono, email, sexo, edad: parseInt(edad), institucion, cargo, estado, municipio, parroquia, actividadId: parseInt(actividadId)};
+            participantesRegistrados.push(participante);
+            localStorage.setItem('participantes', JSON.stringify(participantesRegistrados));
+            
+            mostrarParticipantesGeneral(); // Actualiza la lista general de participantes
+            mostrarActividades(); // Actualiza contadores en actividades
+            
+            formParticipante.reset();
+            municipioParticipanteEl.innerHTML = '<option value="">Seleccione un municipio</option>';
+            parroquiaParticipanteEl.innerHTML = '<option value="">Seleccione una parroquia</option>';
+            municipioParticipanteEl.disabled = true;
+            parroquiaParticipanteEl.disabled = true;
+            actividadAsignadaSelect.focus();
+        }
+
+        // CAMBIADO EL NOMBRE DE LA FUNCIÓN Y LA REFERENCIA AL UL
+        function mostrarParticipantesGeneral() {
+            listaParticipantesGeneralUl.innerHTML = ''; // Usa la nueva referencia
+            if (participantesRegistrados.length === 0) {
+                listaParticipantesGeneralUl.innerHTML = '<li class="empty-list-message">No hay participantes registrados.</li>';
+            } else {
+                participantesRegistrados.forEach((participante, index) => {
+                    const actividadAsociada = actividadesRegistradas.find(act => act.id === participante.actividadId);
+                    const nombreActividad = actividadAsociada ? actividadAsociada.nombre : `ID Actividad: ${participante.actividadId}`;
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-item'; // Reutiliza la clase .list-item si los estilos son compatibles
+                    listItem.innerHTML = `
+                        <div style="float: right;">
+                            <button class="eliminar-btn" onclick="eliminarParticipante(${index})">Eliminar</button>
+                        </div>
+                        <strong>Nombre:</strong> <span>${participante.nombre} ${participante.apellido}</span><br>
+                        <strong>Cédula:</strong> <span>${participante.cedula || 'N/A'}</span><br>
+                        <strong>Teléfono:</strong> <span>${participante.telefono || 'N/A'}</span><br>
+                        <strong>Correo:</strong> <span>${participante.email || 'N/A'}</span><br>
+                        <strong>Sexo:</strong> <span>${participante.sexo || 'N/A'}</span><br>
+                        <strong>Edad:</strong> <span>${participante.edad || 'N/A'}</span><br>
+                        <strong>Institución:</strong> <span>${participante.institucion || 'N/A'}</span><br>
+                        <strong>Cargo:</strong> <span>${participante.cargo || 'N/A'}</span><br>
+                        <strong>Ubicación:</strong> <span>${[participante.estado, participante.municipio, participante.parroquia].filter(Boolean).join(', ')}</span><br>
+                        <strong>Actividad Asignada:</strong> <span>${nombreActividad}</span>
+                    `;
+                    listaParticipantesGeneralUl.appendChild(listItem);
+                });
+            }
+            actualizarTotalParticipantesGeneral();
+        }
+
+        function eliminarParticipante(index) {
+            if (confirm(`¿Está seguro de que desea eliminar al participante "${participantesRegistrados[index].nombre} ${participantesRegistrados[index].apellido}"?`)) {
+                participantesRegistrados.splice(index, 1);
+                localStorage.setItem('participantes', JSON.stringify(participantesRegistrados));
+                mostrarParticipantesGeneral(); // Actualiza la lista general
+                mostrarActividades(); // Actualiza contadores en actividades
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verificaciones de librerías
+            if (typeof jsPDF === 'undefined' || typeof jsPDF.API === 'undefined' || (jsPDF.API && typeof jsPDF.API.autoTable === 'undefined')) {
+                console.error("jsPDF o jsPDF-AutoTable no se cargaron correctamente.");
+            }
+            if (typeof XLSX === 'undefined') {
+                console.error("SheetJS (XLSX) no se cargó correctamente.");
+            }
+
+            formActividad.addEventListener('submit', agregarActividad);
+            formParticipante.addEventListener('submit', agregarParticipante);
+            
+            document.getElementById('exportar-pdf').addEventListener('click', () => {
+                const actividadId = document.getElementById('actividad-exportar').value;
+                if (actividadId) { exportarActividadPDF(parseInt(actividadId)); } 
+                else { alert('Por favor, seleccione una actividad para exportar a PDF.'); }
+            });
+            document.getElementById('exportar-excel').addEventListener('click', exportarDatosExcel);
+            document.getElementById('exportar-txt').addEventListener('click', exportarDatosTXT);
+            document.getElementById('exportar-todos-excel').addEventListener('click', exportarTodosLosParticipantesExcel);
+            
+            municipioParticipanteEl.disabled = true;
+            parroquiaParticipanteEl.disabled = true;
+
+            mostrarActividades();
+            mostrarParticipantesGeneral(); // LLAMAR A LA FUNCIÓN ACTUALIZADA
+            actualizarTotalParticipantesGeneral();
+        });
+    </script>
+</body>
+</html>
